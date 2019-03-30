@@ -1,8 +1,4 @@
 from Stemmer import Stemmer
-import math
-
-def calculateTotalNumberOfTwoLayerMapping(mapping):
-    return sum(count for outerScope in mapping.items() for word, count in outerScope[1].items())
 
 
 def calculateTotalItems(mapping):
@@ -47,19 +43,22 @@ def countTransition(stemmer, transition, word_with_tags):
             except KeyError:
                 transition[tag] = {next_tag: 1}
 
+
 def findMaxProbabilityAndConvertToTuple(mapping):
-    return max([innerDict for outerDict in mapping.values() for innerDict in outerDict.items()])
+    return max([inner_dict for outer_dict in mapping.values() for inner_dict in outer_dict.items()])
+
 
 def findMaxProbabilityForLastWord(mapping):
-    maxProbability = 0
+    max_probability = 0
     temp_tuple = ()
 
-    for outerDict in mapping.items():
-        for innerDict in outerDict[1].items():
-            if maxProbability < innerDict[0]:
-                maxProbability = innerDict[0]
-                temp_tuple = (outerDict[0], innerDict[1])
+    for outer_dict in mapping.items():
+        for inner_dict in outer_dict[1].items():
+            if max_probability < inner_dict[0]:
+                max_probability = inner_dict[0]
+                temp_tuple = (outer_dict[0], inner_dict[1])
     return temp_tuple
+
 
 def convertDictToTuple(mapping):
     return max([innerDict for innerDict in mapping.items()])
@@ -84,58 +83,77 @@ def tracePath(stemmer, separated_line, mapping):
     return trace
 
 
-def calculateProbability(stemmer, transition, emission, separated_line):
-    mapo = {}
+def findFirstTransitionProbabilities(stemmer, emission, transition, separated_line, word_probability_mapping):
+    word = splitWordAndTag(stemmer, separated_line[0])[0]
+    for tag in emission:
+        try:
+            transition_probability = (transition.get('start').get(tag) + 1) / (
+                        calculateTotalItems(transition.get('start')) + len(transition.get('start')))
+        except:
+            transition_probability = 0
+        try:
+            emission_probability = (emission.get(tag).get(word) + 1) / (
+                        calculateTotalItems(emission.get(tag)) + len(emission.get(tag)))
+        except:
+            emission_probability = 1 / (calculateTotalItems(emission.get(tag)) + len(emission.get(tag)))
+        try:
+            word_probability_mapping[word][tag] = {transition_probability * emission_probability: 'start'}
+        except:
+            word_probability_mapping[word] = {tag: {transition_probability * emission_probability: 'start'}}
+
+
+def calculateEmissionProbability(emission, tag ,word):
+    emission_probability = 0
+    try:
+        emission_probability = (emission.get(tag).get(word) + 1) / (
+                    calculateTotalItems(emission.get(tag)) + len(emission.get(tag)))
+    except:
+        emission_probability = 1 / (calculateTotalItems(emission.get(tag)) + len((emission.get(tag))))
+
+    return emission_probability
+
+
+def calculateTransitionProbability(transition, tag, probability_prev_tag_tuple):
+    transition_probability = 0
+    try:
+        transition_probability = (transition.get(probability_prev_tag_tuple[1]).get(tag) + 1) \
+                                 / (calculateTotalItems(transition.get(probability_prev_tag_tuple[1])) + len(
+            transition.get(probability_prev_tag_tuple[1])))
+    except:
+        transition_probability = 0
+    return transition_probability
+
+
+def viterbi(stemmer, transition, emission, separated_line):
+    word_probability_mapping = {}
     #todo UNDER CONSTRUCTION STAY AWAKE
-    word, tag = splitWordAndTag(stemmer, separated_line[0])
-    for m in emission:
-        try:
-            calcTransition = transition.get('start').get(m) / calculateTotalItems(transition.get('start'))
-        except:
-            calcTransition = 0.0000000001
-        try:
-            calcEmission = emission.get(m).get(word) / calculateTotalItems(emission.get(m))
-        except:
-            #todo laplace gerekiyor burada
-            calcEmission = 0.00000000001
-        try:
-            mapo[word][m] = {calcTransition * calcEmission: 'start'}
-        except:
-            mapo[word] = {m: {calcTransition * calcEmission: 'start'}}
+    findFirstTransitionProbabilities(stemmer, emission, transition, separated_line, word_probability_mapping)
 
     for i in range(len(separated_line) - 1):
         prev_word, prev_tag = splitWordAndTag(stemmer, separated_line[i])
-        word, tag = splitWordAndTag(stemmer, separated_line[i + 1])
+        word = splitWordAndTag(stemmer, separated_line[i + 1])[0]
 
-        for m in emission:
-            try:
-                calcEmission = emission.get(m).get(word) / calculateTotalItems(emission.get(m))
-            except:
-                # todo laplace gerekiyor burada
-                calcEmission = 0.00000000001
-            tempmapo = {}
-            for n in mapo[prev_word].items():
-                t = convertDictToTuple(n[1])
+        for tag in emission:
+            emission_probability = calculateEmissionProbability(emission, tag, word)
+            temp_mapping = {}
+
+            for prev_probabilities in word_probability_mapping.get(prev_word).items():
+                probability_prev_tag_tuple = convertDictToTuple(prev_probabilities[1])
+                transition_probability = calculateTransitionProbability(transition, tag, probability_prev_tag_tuple)
+
                 try:
-                    calcTransition = transition.get(t[1]).get(m) / calculateTotalItems(transition.get(t[1]))
-                    try:
-                        tempmapo[m][t[0] * calcTransition * calcEmission] = n[0]
-                    except:
-                        tempmapo[m]= {t[0] * calcTransition * calcEmission: n[0]}
+                    temp_mapping[tag][probability_prev_tag_tuple[0] * transition_probability * emission_probability] = prev_probabilities[0]
                 except:
-                    try:
-                        tempmapo[m][t[0] * 0.00000000001 * calcEmission] = n[0]
-                    except:
-                        tempmapo[m] = {t[0] * 0.00000000001 * calcEmission : n[0]}
+                    temp_mapping[tag] = {probability_prev_tag_tuple[0] * transition_probability * emission_probability: prev_probabilities[0]}
 
-            ali = findMaxProbabilityAndConvertToTuple(tempmapo)
+            max_probability_prev_tag_tuple = findMaxProbabilityAndConvertToTuple(temp_mapping)
             try:
-                mapo[word][m] = {ali[0]: ali[1]}
+                word_probability_mapping[word][tag] = {max_probability_prev_tag_tuple[0]: max_probability_prev_tag_tuple[1]}
             except:
-                mapo[word] = {m: {ali[0]: ali[1]}}
+                word_probability_mapping[word] = {tag: {max_probability_prev_tag_tuple[0]: max_probability_prev_tag_tuple[1]}}
 
-    #todo KARSILASTIRMA FONKSIYONU YAZILACAK BURAYA SEP_LINE I VE MAPOYU ALABILIRIZ
-    return  tracePath(stemmer, separated_line, mapo)
+    #todo end transitionu icinde birseyler yapmak lazim
+    return tracePath(stemmer, separated_line, word_probability_mapping)
 
 
 emission, transition = {}, {}
@@ -149,13 +167,15 @@ countEmission(stemmer, emission, words_with_tags)
 countTransition(stemmer, transition, words_with_tags)
 
 deneme = ["Siz/Pron", ",/Punc", "sonsuza/Noun", "dek/Postp", "yürüyeceksiniz/Verb", "./Punc"]
+deneme2 = ["Erkekler_Parkı'na/Noun", "gidiyorsun/Verb", "./Punc"]
+deneme3 = ["Sürpriz/Noun", "ne/Pron", "acaba/Adv", "?/Punc"]
+deneme4 = ["Sağındaki/Adj", "taburede/Noun", "de/Conj", "darbukasıyla/Noun", ",/Punc", "Recep/Noun", "olurdu/Verb", "./Punc"]
+deneme5 = ["Dışarıya/Noun", "bakın/Verb", "./Punc"]
+# mapps = {'noun': {45: "prev_tag"}, 'un': {60: "prev_tag"},'oun': {80: "prev_tag"}}
+# maxdict = {'non':{0: 'non'}}
 
-
-mapps = {'noun': {45: "prev_tag"}, 'un': {60: "prev_tag"},'oun': {80: "prev_tag"}}
-maxdict = {'non':{0: 'non'}}
-
-mappi = {'a': {'noun': {45: "prev_tag"}}}
-z = max([n for m in mapps.values() for n in m.items()])
+# mappi = {'a': {'noun': {45: "prev_tag"}}}
+# z = max([n for m in mapps.values() for n in m.items()])
 
 # print(z)
     # print(max(m))
@@ -164,13 +184,13 @@ z = max([n for m in mapps.values() for n in m.items()])
     #     # maxdict = m[1][0]
 # print(maxdict)
 # k = convertDictToTuple(mapps)
-print(convertDictToTuple(mappi.get('a')))
-print(findMaxProbabilityForLastWord(mappi.get('a')))
+# print(convertDictToTuple(mappi.get('a')))
+# print(findMaxProbabilityForLastWord(mappi.get('a')))
 
 # print(calculateTotalNumberOfTwoLayerMapping(emission))
 # print(calculateTotalNumberOfTwoLayerMapping(transition))
 # print(emission.get('start'))
 # print(transition.get('punc'))
 
-cc = calculateProbability(stemmer,transition,emission,deneme)
+cc = viterbi(stemmer,transition,emission,deneme5)
 print(cc[::-1])
