@@ -50,9 +50,38 @@ def countTransition(stemmer, transition, word_with_tags):
 def findMaxProbabilityAndConvertToTuple(mapping):
     return max([innerDict for outerDict in mapping.values() for innerDict in outerDict.items()])
 
+def findMaxProbabilityForLastWord(mapping):
+    maxProbability = 0
+    temp_tuple = ()
 
-def converDictToTuple(mapping):
+    for outerDict in mapping.items():
+        for innerDict in outerDict[1].items():
+            if maxProbability < innerDict[0]:
+                maxProbability = innerDict[0]
+                temp_tuple = (outerDict[0], innerDict[1])
+    return temp_tuple
+
+def convertDictToTuple(mapping):
     return max([innerDict for innerDict in mapping.items()])
+
+
+def tracePath(stemmer, separated_line, mapping):
+    trace = []
+    sizeOfLine = len(separated_line)
+    prev_tag = ""
+    for i in reversed(range(sizeOfLine)):
+        word, tag = splitWordAndTag(stemmer, separated_line[i])
+
+        if i == sizeOfLine - 1:
+            found_tag, prev_tag = findMaxProbabilityForLastWord(mapping.get(word))
+            trace.append(found_tag)
+
+        else:
+            tt = convertDictToTuple(mapping.get(word).get(prev_tag))
+            trace.append(prev_tag)
+            prev_tag = tt[1]
+
+    return trace
 
 
 def calculateProbability(stemmer, transition, emission, separated_line):
@@ -86,7 +115,7 @@ def calculateProbability(stemmer, transition, emission, separated_line):
                 calcEmission = 0.00000000001
             tempmapo = {}
             for n in mapo[prev_word].items():
-                t = converDictToTuple(n[1])
+                t = convertDictToTuple(n[1])
                 try:
                     calcTransition = transition.get(t[1]).get(m) / calculateTotalItems(transition.get(t[1]))
                     try:
@@ -106,9 +135,7 @@ def calculateProbability(stemmer, transition, emission, separated_line):
                 mapo[word] = {m: {ali[0]: ali[1]}}
 
     #todo KARSILASTIRMA FONKSIYONU YAZILACAK BURAYA SEP_LINE I VE MAPOYU ALABILIRIZ
-    for w in separated_line:
-        wor,tag = splitWordAndTag(stemmer,w)
-        print("{} - {}".format(wor, findMaxProbabilityAndConvertToTuple(mapo.get(wor))))
+    return  tracePath(stemmer, separated_line, mapo)
 
 
 emission, transition = {}, {}
@@ -127,6 +154,7 @@ deneme = ["Siz/Pron", ",/Punc", "sonsuza/Noun", "dek/Postp", "yürüyeceksiniz/V
 mapps = {'noun': {45: "prev_tag"}, 'un': {60: "prev_tag"},'oun': {80: "prev_tag"}}
 maxdict = {'non':{0: 'non'}}
 
+mappi = {'a': {'noun': {45: "prev_tag"}}}
 z = max([n for m in mapps.values() for n in m.items()])
 
 # print(z)
@@ -135,9 +163,9 @@ z = max([n for m in mapps.values() for n in m.items()])
     #     if ()
     #     # maxdict = m[1][0]
 # print(maxdict)
-# k = converDictToTuple(mapps)
-# print(k)
-
+# k = convertDictToTuple(mapps)
+print(convertDictToTuple(mappi.get('a')))
+print(findMaxProbabilityForLastWord(mappi.get('a')))
 
 # print(calculateTotalNumberOfTwoLayerMapping(emission))
 # print(calculateTotalNumberOfTwoLayerMapping(transition))
@@ -145,4 +173,4 @@ z = max([n for m in mapps.values() for n in m.items()])
 # print(transition.get('punc'))
 
 cc = calculateProbability(stemmer,transition,emission,deneme)
-# print(cc)
+print(cc[::-1])
