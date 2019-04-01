@@ -38,14 +38,14 @@ def findMaxProbabilityAndConvertToTuple(mapping):
 
 
 def findMaxProbabilityForLastWord(mapping):
-    max_probability = 0
-    temp_tuple = ()
+    max_probability, temp_tuple = 0, ()
 
-    for outer_dict in mapping.items():
-        for inner_dict in outer_dict[1].items():
-            if max_probability < inner_dict[0]:
-                max_probability = inner_dict[0]
-                temp_tuple = (outer_dict[0], inner_dict[1])
+    [map(max_probability, inner_dict[0]) and map(temp_tuple, (outer_dict[0], inner_dict[1])) for outer_dict in mapping.items() for inner_dict in outer_dict[1].items()]
+    # for outer_dict in mapping.items():
+    #     for inner_dict in outer_dict[1].items():
+    #         if max_probability < inner_dict[0]:
+    #             max_probability = inner_dict[0]
+    #             temp_tuple = (outer_dict[0], inner_dict[1])
     return temp_tuple
 
 
@@ -57,30 +57,29 @@ def tracePath(stemmer, separated_line, mapping):
     trace = []
     sizeOfLine = len(separated_line)
     prev_tag = convertDictToTuple(mapping.get('not a word').get('end'))[1]
+
     for i in reversed(range(sizeOfLine)):
-        word, tag = splitWordAndTag(stemmer, separated_line[i])
+        word = splitWordAndTag(stemmer, separated_line[i])[0]
         trace.append(prev_tag)
         prev_tag = convertDictToTuple(mapping.get(word).get(prev_tag))[1]
     return trace
 
 
 def calculateTransitionProbability(transition, tag, prev_tag):
+    denominator = calculateTotalItems(transition.get(prev_tag)) + len(transition.get(prev_tag))
     try:
-        transition_probability = (transition.get(prev_tag).get(tag) + 1) \
-                                 / (calculateTotalItems(transition.get(prev_tag)) + len(
-            transition.get(prev_tag)))
+        transition_probability = float((transition.get(prev_tag).get(tag) + 1) / denominator)
     except:
-        transition_probability = 0
+        transition_probability = float(1 / denominator)
     return transition_probability
 
 
 def calculateEmissionProbability(emission, tag, word):
+    denominator = calculateTotalItems(emission.get(tag)) + len(emission.get(tag))
     try:
-        emission_probability = (emission.get(tag).get(word) + 1) / (
-                    calculateTotalItems(emission.get(tag)) + len(emission.get(tag)))
+        emission_probability = float((emission.get(tag).get(word) + 1) / denominator)
     except:
-        emission_probability = 1 / (calculateTotalItems(emission.get(tag)) + len((emission.get(tag))))
-
+        emission_probability = float(1 / denominator)
     return emission_probability
 
 
@@ -123,6 +122,11 @@ def findLastTransitionProbabilities(transition, prev_word, word_probability_mapp
             addDictionaryToMap(word_probability_mapping, 'not a word', 'end', calculated_probability, tag)
 
 
+def compareResults(stemmer, separated_line, result_list):
+    correct_result = sum([1 for index, word_with_tag in enumerate(separated_line) if splitWordAndTag(stemmer, word_with_tag)[1] == result_list[index]])
+    return (correct_result, len(separated_line) - correct_result)
+
+
 def viterbi(stemmer, transition, emission, separated_line):
     word_probability_mapping = {}
     findFirstTransitionProbabilities(stemmer, emission, transition, separated_line, word_probability_mapping)
@@ -150,7 +154,8 @@ def viterbi(stemmer, transition, emission, separated_line):
             addDictionaryToMap(word_probability_mapping, word, tag, max_probability_prev_tag_tuple[0], max_probability_prev_tag_tuple[1])
 
     findLastTransitionProbabilities(transition, splitWordAndTag(stemmer, separated_line[-1])[0], word_probability_mapping)
-    return tracePath(stemmer, separated_line, word_probability_mapping)
+    result_list = tracePath(stemmer, separated_line, word_probability_mapping)
+    return compareResults(stemmer, separated_line, result_list[::-1])
 
 
 emission, transition = {}, {}
@@ -170,6 +175,8 @@ deneme4 = ["Sağındaki/Adj", "taburede/Noun", "de/Conj", "darbukasıyla/Noun", 
 deneme5 = ["Dışarıya/Noun", "bakın/Verb", "./Punc"]
 # mapps = {'noun': {45: "prev_tag"}, 'un': {60: "prev_tag"},'oun': {80: "prev_tag"}}
 # maxdict = {'non':{0: 'non'}}
+
+
 
 mappi = {'a': {'noun': {45: "prev_tag"}}}
 # z = max([n for m in mapps.values() for n in m.items()])
@@ -191,4 +198,4 @@ print(convertDictToTuple(mappi.get('a').get('noun')))
 # print(transition.get('punc'))
 
 cc = viterbi(stemmer, transition, emission, deneme)
-print(cc[::-1])
+print(cc)
