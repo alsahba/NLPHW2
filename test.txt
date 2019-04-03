@@ -694,7 +694,7 @@ Daha/Adv güçlü_olmaları/Noun için/Postp hadım_edilen/Adj bu/Det erkek/Noun
 İhtiyaç_olabileceği/Noun düşüncesiyle/Noun evin/Noun etrafında/Noun gün/Noun boyu/Noun bekleyecek/Adj on/Num kadar/Postp geyik/Noun seçildikten/Noun sonra/Postp diğerleri/Noun serbest_bırakıldı/Verb ./Punc
 Şimdi/Adv tekrar/Adv eve/Noun girdiler/Verb ,/Punc geyik/Noun etli/Adj yemek/Noun zamanı/Noun gelmişti/Verb ./Punc
 Birkaç/Adj haftaya/Noun kadar/Postp geyikler/Noun doğurmaya/Noun başlayacak/Verb ./Punc
-Yemek/Noun boyunca/Postp kaç/Adj hayvanın/Noun doğum_yapacağı/Noun hesaplanıyor/Verb) ./Punc
+Yemek/Noun boyunca/Postp kaç/Adj hayvanın/Noun doğum_yapacağı/Noun hesaplanıyor/Verb ./Punc
 Bir/Num ay/Noun boyunca/Postp yani/Conj mayısın/Noun üçüncü/Num haftasına/Noun kadar/Postp doğumlar/Noun devam_edecek/Verb ./Punc
 Bu/Det süre/Noun içinde/Noun doğum_yapanların/Noun karları/Noun erimiş/Adj ,/Punc otları/Noun çıkmaya/Noun başlamış/Adj ,/Punc suyu/Noun olan/Adj ,/Punc kurtlara/Noun karşı/Postp korunaklı/Adj bir/Det alanda/Noun koruma/Noun altına/Noun alınmaları/Noun gerekecek/Verb ./Punc
 Birkaç/Adj ay/Noun boyunca/Postp bu/Det arazide/Noun tüfekleriyle/Noun nöbet_tutması/Noun gerekiyor/Verb çobanların/Noun ./Punc
