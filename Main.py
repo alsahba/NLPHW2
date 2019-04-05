@@ -1,56 +1,61 @@
-import time
-import numpy as np
-from Stemmer import Stemmer
+import time, numpy as np
+from TurkishStemmer import TurkishStemmer
 
 
 def calculateTotalItems(mapping):
     return sum(count for word, count in mapping.items())
 
 
-def splitWordAndTag(stemmer, word_with_tag):
+def wordOrganizer(word):
+    word = word.replace("_", " ")
+    if '\'' in word:
+        n = word[0:int(word.find('\''))]
+        # n = self.stemmer.stem(n)
+        return n.lower()
+    # word = self.stemmer.stem(word)
+    return word.lower()
+
+
+def splitWordAndTag(word_with_tag):
     separation = word_with_tag.split('/')
-    word = stemmer.wordOrganizer(separation[0])
+    word = wordOrganizer(separation[0])
     tag = separation[1].lower()
     return word, tag
 
 
-def observeEmission(stemmer, emission, emission_reversed, words_with_tags):
+def observeEmission(emission, emission_reversed, words_with_tags):
     for word_with_tag in words_with_tags:
-        word, tag = splitWordAndTag(stemmer, word_with_tag)
+        word, tag = splitWordAndTag(word_with_tag)
 
         if word == 'not a word':
             continue
+
         addDictionaryToMap(emission, tag, word)
         addDictionaryToMap(emission_reversed, word, tag)
 
 
-def observeTransition(stemmer, transition, word_with_tags):
-    for i in range(len(words_with_tags) - 1):
-        tag = splitWordAndTag(stemmer, words_with_tags[i])[1]
-        next_tag = splitWordAndTag(stemmer, words_with_tags[i + 1])[1]
+def observeTransition(transition, word_with_tags):
+    for index in range(len(words_with_tags) - 1):
+        tag = splitWordAndTag(words_with_tags[index])[1]
+        next_tag = splitWordAndTag(words_with_tags[index + 1])[1]
 
         if tag == 'end' and next_tag == 'start':
             continue
+
         addDictionaryToMap(transition, tag, next_tag)
 
 
 def findMaxProbabilityAndConvertToTuple(mapping):
-    maxi, temp_tuple = 0, ()
-    for outer_dict in mapping.items():
-        for inner_dict in outer_dict[1].items():
-            if maxi <= inner_dict[1]:
-                maxi = inner_dict[1]
-                temp_tuple = (inner_dict[1], inner_dict[0])
-    return temp_tuple
+    return max([(inner_dict[1], inner_dict[0]) for outer_dict in mapping.items() for inner_dict in outer_dict[1].items()])
 
 
-def tracePath(stemmer, separated_line, array):
+def tracePath(separated_line, array):
     trace = []
     sizeOfLine = len(separated_line)
     prev_tag = array[sizeOfLine].get('end')[0]
 
     for i in reversed(range(sizeOfLine)):
-        word = splitWordAndTag(stemmer, separated_line[i])[0]
+        word = splitWordAndTag(separated_line[i])[0]
         trace.append(prev_tag)
         prev_tag = array[i].get(prev_tag)[0]
     return trace
@@ -83,8 +88,8 @@ def addDictionaryToArray(array, index, tag, prev_tag, probability):
         array[index] = {tag: (prev_tag, probability)}
 
 
-def calcInitialProbability(stemmer, emission, emission_reversed, transition, separated_line, word_probability_array):
-    word = splitWordAndTag(stemmer, separated_line[0])[0]
+def calcInitialProbability(emission, emission_reversed, transition, separated_line, word_probability_array):
+    word = splitWordAndTag(separated_line[0])[0]
     for tag in emission:
         transition_probability = calcTransitionProbability(transition, tag, 'start')
         emission_probability = calcEmissionProbability(emission, tag, word)
@@ -127,24 +132,24 @@ def addDictionaryToMap(mapping, tag, tag_word, probability=None):
             mapping[tag] = {tag_word: probability}
 
 
-def compareResults(stemmer, separated_line, result_list):
+def compareResults(separated_line, result_list):
     correct_result = sum([1 for index, word_with_tag in enumerate(separated_line)
-                          if splitWordAndTag(stemmer, word_with_tag)[1] == result_list[index]])
+                          if splitWordAndTag(word_with_tag)[1] == result_list[index]])
     return (correct_result, len(separated_line))
 
 
-def viterbi(stemmer, transition, emission, emission_reversed, separated_line):
+def viterbi(transition, emission, emission_reversed, separated_line):
     word_probability_array = np.empty(len(separated_line) + 1, dtype=dict)
-    calcInitialProbability(stemmer, emission, emission_reversed, transition, separated_line, word_probability_array)
+    calcInitialProbability(emission, emission_reversed, transition, separated_line, word_probability_array)
 
-    for i in range(len(separated_line) - 1):
-        word = splitWordAndTag(stemmer, separated_line[i + 1])[0]
+    for index in range(len(separated_line) - 1):
+        word = splitWordAndTag(separated_line[index + 1])[0]
 
         for tag in emission:
             emission_probability = calcEmissionProbability(emission, tag, word)
             temp_mapping = {}
 
-            for prev_tag, prev_probability in word_probability_array[i].items():
+            for prev_tag, prev_probability in word_probability_array[index].items():
                 transition_probability = calcTransitionProbability(transition, tag, prev_tag)
                 calculated_probability = prev_probability[1] * transition_probability * emission_probability
 
@@ -153,19 +158,19 @@ def viterbi(stemmer, transition, emission, emission_reversed, separated_line):
                 addDictionaryToMap(temp_mapping, tag, prev_tag, calculated_probability)
 
             max_probability, found_prev_tag = findMaxProbabilityAndConvertToTuple(temp_mapping)
-            addDictionaryToArray(word_probability_array, i + 1, tag, found_prev_tag, max_probability)
+            addDictionaryToArray(word_probability_array, index + 1, tag, found_prev_tag, max_probability)
 
-    calcLastProbability(transition, word_probability_array, i + 1)
+    calcLastProbability(transition, word_probability_array, index + 1)
     return word_probability_array
 
 
-def test_data(test_lines, stemmer, transition, emission, emission_reversed):
+def test_data(test_lines, transition, emission, emission_reversed):
     correct_false_tuple = (0, 0)
     for line in test_lines:
         words_with_tags_test = line.split()
-        word_probability_array = viterbi(stemmer, transition, emission, emission_reversed, words_with_tags_test)
-        found_path = tracePath(stemmer, words_with_tags_test, word_probability_array)
-        temp_tuple = compareResults(stemmer, words_with_tags_test, found_path[::-1])
+        word_probability_array = viterbi(transition, emission, emission_reversed, words_with_tags_test)
+        found_path = tracePath(words_with_tags_test, word_probability_array)
+        temp_tuple = compareResults(words_with_tags_test, found_path[::-1])
         correct_false_tuple = (correct_false_tuple[0] + temp_tuple[0], correct_false_tuple[1] + temp_tuple[1])
     return correct_false_tuple
 
@@ -173,16 +178,15 @@ def test_data(test_lines, stemmer, transition, emission, emission_reversed):
 start = time.time()
 emission, emission_reversed, transition = {}, {}, {}
 words_with_tags, train_lines, test_lines = [], [], []
-stemmer = Stemmer()
 
 [train_lines.append('not_a_word/start ' + line.strip() + ' not_a_word/end') if index < 3960
  else test_lines.append(line.strip()) for index, line in enumerate(open("metu.txt", "r").readlines())]
 [words_with_tags.append(word.strip()) for line in train_lines for word in line.split()]
 
-observeEmission(stemmer, emission, emission_reversed, words_with_tags)
-observeTransition(stemmer, transition, words_with_tags)
+observeEmission(emission, emission_reversed, words_with_tags)
+observeTransition(transition, words_with_tags)
 
-correct_false_tuple = test_data(test_lines, stemmer, transition, emission, emission_reversed)
+correct_false_tuple = test_data(test_lines, transition, emission, emission_reversed)
 print("Accuracy is {0:0.2f} percent for 1699 lines.".format((correct_false_tuple[0] / correct_false_tuple[1]) * 100))
 
 end = time.time()
