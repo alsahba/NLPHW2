@@ -1,4 +1,4 @@
-import time, numpy as np
+import numpy as np
 # from snowballstemmer import stemmer
 # turkishStemmer = stemmer("turkish")
 
@@ -73,10 +73,10 @@ def findMaxProbabilityAndConvertToTuple(mapping):
 # Decide which tag is followed by end, then iteratively found previous tag that followed by current tag through start.
 # All previous tags added to a list and return that list.
 def tracePath(separated_line, array):
-    trace, sizeOfLine = [], len(separated_line)
-    prev_tag = array[sizeOfLine].get('end')[0]
+    trace, size_of_line = [], len(separated_line)
+    prev_tag = array[size_of_line].get('end')[0]
 
-    for index in reversed(range(sizeOfLine)):
+    for index in reversed(range(size_of_line)):
         trace.append(prev_tag)
         prev_tag = array[index].get(prev_tag)[0]
     return trace
@@ -227,7 +227,6 @@ def testData(test_lines, transition, emission, emission_reversed):
 
 # Main method.
 def main():
-    start = time.time()
     emission, emission_reversed, transition = {}, {}, {}
     words_with_tags, train_lines, test_lines = [], [], []
 
@@ -240,7 +239,6 @@ def main():
 
     correct_false_tuple = testData(test_lines, transition, emission, emission_reversed)
     print("Accuracy is {0:0.2f} percent for 1699 lines.".format((correct_false_tuple[0] / correct_false_tuple[1]) * 100))
-    print("Running time took {0:0.2f} seconds".format(time.time() - start))
 
 
 main()
